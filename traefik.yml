@@ -1,0 +1,57 @@
+api:
+  dashboard: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          permanent: true
+  websecure:
+    address: ":443"
+  git:
+    address: ":2222"
+
+serversTransport:
+  maxIdleConnsPerHost: 1
+
+providers:
+  docker:
+    endpoint: "unix:///var/run/docker.sock"
+    exposedByDefault: false
+    network: proxy
+
+log:
+  level: DEBUG
+
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: my-email-here@gmail.com
+      storage: acme.json
+      httpChallenge:
+        entryPoint: websecure
+        
+http:
+  routers:
+    google-redirect:
+      entryPoints:
+        - websecure
+      rule: "Host(`mywebsite.com`) && PathPrefix(`/desk`)"
+      middlewares:
+        - google-redirect@file
+      service: noop
+
+  middlewares:
+    google-redirect:
+      redirectRegex:
+        regex: "^https?://(.*)/desk(.*)$"
+        replacement: "https://www.google.com"
+        permanent: true
+  services:
+      noop:
+        loadBalancer:
+          servers:
+            - url: http://127.0.0.1
